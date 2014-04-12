@@ -1,0 +1,134 @@
+sudo apt-get install -y mysql-server postfix postfix-mysql libsasl2-modules libsasl2-modules-sql libgsasl7 libauthen-sasl-cyrus-perl sasl2-bin libpam-mysql clamav-base libclamav6 clamav-daemon clamav-freshclam amavisd-new spamassassin spamc courier-base courier-authdaemon courier-authlib-mysql courier-imap courier-imap-ssl courier-pop courier-pop-ssl courier-ssl
+
+
+Location of Certificates:
+/etc/courier/pop3d.pem
+/etc/courier/imapd.pem
+
+IMAP and POP3 ports:
+IMAP/IMAPS: Ports 143 and 993
+Pop/Pops: Ports 110 and 995
+SMTP: Ports 25 and 587
+LDAP: Port 389
+
+-------------
+
+. Introduction
+
+This article is aimed at beginners who wish to set up a basic email server. Basic system administration knowledge would be an advantage and the ability to install software and edit configuration files is essential. The article was written for CentOS 5 but should be equally applicable to earlier versions. Later versions may differ.
+
+There are many different scenarios and combinations that can be used when setting up an email server (far to many to cover here), so this article makes some basic choices for you, such as the software we will use (postfix and dovecot). Other options are required to be altered by the user, such as your network addresses and domain names. More advanced options such as virtual domains and users are outside the scope of this article and will not be covered herein.
+
+This article uses postfix as the mail transport agent (MTA), as opposed to sendmail, the default MTA for CentOS 5 (postfix is the default in CentOS 6). Dovecot is used to allow users to access their email by either imap or pop protocols. We assume a domain name of example.com which should be changed by the reader and can be either a real domain name for a fully qualified email server or a fake domain name if you only wish to implement an internal mail server. We assume that the physical mail server (host) is mail.example.com and is located at the private IP address 192.168.0.1 (this should be changed to suit the readers needs). The email server will provide email accounts via standard user system accounts and users will access their email using their system account username and password. We will assume a user called John Smith who has a system account under the login name of john.
+
+2. Installation
+
+The first thing we need to do is install the requisite software. The easiest way to do this is with yum from the command line:
+
+
+yum install postfix dovecot system-switch-mail system-switch-mail-gnome
+Yum should automatically resolve any dependencies. Dovecot is dependent on mysql and perl, so these will likely be installed too if they are not already installed on the system.
+
+Alternatively, we can skip 'system-switch-mail' and 'system-switch-mail-gnome' installation and remove the default MTA 'sendmail', this will make 'postfix' the default MTA in our system.
+
+
+yum install postfix dovecot 
+yum remove sendmail
+Please note that the default MTA in CentOS 5 is sendmail. If you do not make postfix the default MTA, updating postfix may cause the default MTA to revert to sendmail.
+
+3. Configuration
+
+Next we need to configure the various parts of our email server.
+
+3.1. Postfix
+Postfix configuration files are stored in /etc/postfix. The two main postfix configuration files are master.cf and main.cf, although we will only be dealing with main.cf here. First we are going to make some additions or changes to the main.cf configuration file. The following lines should be added, edited or uncommented:
+
+
+myhostname = mail.example.com
+mydomain = example.com
+myorigin = $mydomain
+inet_interfaces = all
+mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain
+mynetworks = 192.168.0.0/24, 127.0.0.0/8
+relay_domains =
+home_mailbox = Maildir/
+Note: Each line should start at the beginning of a new line and should not be preceded by white space or tabs. White space or tabs at the beginning of a line are treated as a continuation of the previous line, and if the previous line is a comment (#) line then the subsequent line is also treated as such. Further, inline comments should be avoided.
+
+Now lets take a look at each setting it turn to understand what we've just done:
+
+myhostname: is the host name of the system (i.e, the system is called mail or mail.example.com).
+
+mydomain: is the domain name for the email server (it can be a real or fake domain name).
+
+myorigin: is the domain name that locally-posted email appears to have come from and is delivered to.
+
+inet_interfaces: sets the network interfaces that Postfix can receive mail on. These need to include at least localhost and the local domain.
+
+mydestination: is the list of domains that will be delivered to (i.e, this server is the final destination for email addressed to these domains).
+
+mynetworks: is a list of trusted IP addresses that may send or relay mail through the server. Users attempting to send email through the server originating from IP addresses not listed here will be rejected.
+
+relay_domains: is a list of destination domains this system will relay mail to. By setting it to be blank we ensure that our mail server isn't acting as an open relay for untrusted networks. The reader is advised to test that their system isn't acting as an open relay here: http://www.abuse.net/relay.html
+
+home_mailbox: sets the path of the mailbox relative to the users home directory and also specifies the style of mailbox to be used. Postfix supports both Maildir and mbox formats and readers are encouraged to read up on the merits of each for themselves. However, in this article we have chosen to use Maildir format (a trailing slash indicates Maildir format. To specify mbox format, the reader would use home_mailbox = Mailbox).
+
+3.2. Dovecot
+The dovecot configuration file is located at /etc/dovecot.conf. The following lines should be added, edited or uncommented:
+
+
+protocols = imap imaps pop3 pop3s
+mail_location = maildir:~/Maildir
+pop3_uidl_format = %08Xu%08Xv
+# Required on x86_64 kernels
+login_process_size = 64
+Again, looking at each option:
+
+protocols: specifies the protocols available to users to access their email. Dovecot supports imap(s) and pop3(s), and any or all may be used.
+
+mail_location: specifies the format and location of each users mailbox. Here we see we are using maildir format and each user has their mailbox located at ~/Maildir. Examples for mbox format are provided in the configuration file.
+
+pop3_uidl_format: is required to fix a problem with Outlook 2003 accessing mailboxes via pop3 so it makes sense to set this (see the notes in the configuration file for more details).
+
+login_process_size: The release notes for CentOS 5.1 state that "the Dovecot package on x86_64 kernels requires the parameter "login_process_size = 64" to be added to /etc/dovecot.conf after an upgrade to CentOS 5.1". 32-Bit installations are unaffected and do not require this setting.
+
+Note: If you have any issues connecting with either imap or pop3 to dovecot, check the IMAP specific settings and POP3 specific settings sections of the dovecot.conf configuration file for workarounds. The available options mostly affect older mail clients and workarounds for Microsoft Outlook and Outlook Express.
+
+Note on dovecot and C6: With CentOS 6 the configuration moved to /etc/dovecot/dovecot.conf. Dovecot can be started without any further changes to the configuration file and will automatically listen for connections on the ports for pop3(s) and imap(s). Changes to suite your environment will probably be required.
+
+3.3. Create users mailboxes
+Next we need to create a mailbox for each user in their home directory and set the appropriate permission, so using our example user john:
+
+
+mkdir /home/john/Maildir
+chown john:john /home/john/Maildir
+chmod -R 700 /home/john/Maildir 
+Note: If creating the user mailboxes as root then we must set ownership of the directory to the user.
+
+3.4. Aliases
+We are nearly finished. We have an email account set up for our user John Smith who logs in as john. His email address would be john@example.com . However, John may like to receive email as jsmith@example.com (or any other alias). We can achieve this by setting an alias for John using the system alias file (by default postfix uses /etc/aliases). We can also add aliases for other users, so for example we could also redirect root's email to John by adding the following to /etc/aliases:
+
+
+# Person who should get root's mail
+root:           john
+# User aliases
+jsmith:         john
+j.smith:        john
+If you edit the aliases file to set up new aliases for users once postfix is running, you must rebuild the aliases database by running the newaliases command.
+
+4. Starting the server
+
+We are now ready to fire up our new email server. First we need to tell our system to use postfix as the MTA rather than the default sendmail. To do this, run the system-switch-mail command and select postfix as the MTA. This will install the postfix service and set it to start automatically at runlevels 3, 4, and 5. Next we need to set the dovecot service to also automatically start at runlevels 3, 4, and 5, and start both services:
+
+
+chkconfig --level 345 dovecot on
+/etc/init.d/dovecot start
+/etc/init.d/postfix start
+at which point you should be up and running. Your email server should have no trouble sending and receiving email internally and sending external email. To receive external email on your domain, you will also need to configure MX records in DNS for your domain (ideally a PTR rDNS entry should also be configured through your ISP mapping your IP address to your domain). Don't forget to open any required ports on your Linux firewall depending what services you are running (SMTP 25; POP3 110; IMAP 143; IMAPS 993; POP3S 995) and enable port forwarding for those ports on any routers.
+
+If you make any changes to the postfix configuration file main.cf, you can either restart the postfix service or run the postfix reload command to update the changes.
+
+5. Summary
+
+Postfix is an extremely powerful and versatile mail transport agent. In this article we have seen how to implement a basic email server using postfix and dovecot for a single domain based on system user accounts. We have barely scratched the surface of the true capabilities of a postfix-based system, but hopefully have provided a solid working foundation on which new users can build.
+
+Readers are now encouraged to read the complimentary postfix restrictions guide.
