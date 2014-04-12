@@ -1,0 +1,49 @@
+Installing Postfix
+When you install Postfix I would suggest to select "Internet Site" option.
+
+To install Postfix, you need to install the postfix package. For Postfix documentation, you need the postfix-doc package.
+
+Installing MySQL map support for Postfix
+We need to add MySQL mapping support for Postfix. Hope that you have already read How Postfix Mappings Work? section in this how to.
+
+To install postfix-mysql, install the postfix-mysql package.
+
+To install MySQL client program, install the mysql-client package.
+
+To install MySQL server, install the mysql-server package.
+
+Installing Packages for Client Access and Authentication
+We will need to offer our user IMAP/POP3 access. Our setup will offer those using the following packages.
+
+To provide client authentication, install the courier-authdaemon package.
+
+To add MySQL support for courier-authdaemon, install the courier-authmysql package. On Ubuntu 7.10 AND ABOVE, courier-authmysql seems deprecated, install courier-authlib-mysql instead.
+
+
+
+To provide SSL-encrypted POP3 access, install the courier-pop-ssl package.
+
+
+
+To provide SSL-encrypted IMAP access , install the courier-imap-ssl package.
+
+Sometimes - since Ubuntu 12.04 - courrier-imap failed connecting users. http://ubuntuforums.org/showpost.php?p=11902102&postcount=16. Try to replace gamin by fam :
+
+
+sudo apt-get purge gamin
+sudo apt-get install fam
+sudo apt-get install courier-pop-ssl courier-imap-ssl courier-ssl courier-pop courier-imap courier-base
+Installing package for SMTP authentication
+Our system will allow road-warriors to send email through our server using authenticated SMTP. This will basically stop unauthorized relaying through our mail server. Not only we are authenticating our user's when they are retrieving mails but also we authenticate them when they are sending mails as well.
+
+To provide encrypted authenticated SMTP, install the postfix-tls package.
+
+This may have already installed with postfix. If so,leave it.
+
+To install Cyrus SASL library, install the libsasl2 package.
+
+To add authentication mechanisms for the SASL library, install the libsasl2-modules package.
+
+To add MySQL support authentication mechanisms with the SASL library, install the libsasl2-modules-sql package.
+
+To create certificates, install the openssl package.

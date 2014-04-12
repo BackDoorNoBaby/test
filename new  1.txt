@@ -1,3 +1,6 @@
+https://help.ubuntu.com/lts/serverguide/postfix.html
+
+
 sudo apt-get install -y mysql-server postfix postfix-mysql libsasl2-modules libsasl2-modules-sql libgsasl7 libauthen-sasl-cyrus-perl sasl2-bin libpam-mysql clamav-base libclamav6 clamav-daemon clamav-freshclam amavisd-new spamassassin spamc courier-base courier-authdaemon courier-authlib-mysql courier-imap courier-imap-ssl courier-pop courier-pop-ssl courier-ssl
 
 
